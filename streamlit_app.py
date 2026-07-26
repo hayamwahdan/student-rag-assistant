@@ -67,23 +67,28 @@ st.info("Ask a question about the uploaded documents. Answers include cited sour
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-        if message.get("sources"):
-            with st.expander("View Sources"):
-                for src in message["sources"]:
-                    st.write(f"📍 {src}")
+if "pending_question" not in st.session_state:
+    st.session_state.pending_question = None
 
-if prompt := st.chat_input("What would you like to know?"):
-    st.session_state.messages.append({"role": "user", "content": prompt})
+SUGGESTED_QUESTIONS = [
+    "What is overfitting?",
+    "Explain the bias-variance tradeoff",
+    "What is the difference between supervised and unsupervised learning?",
+    "What is a neural network?",
+]
+
+
+def process_question(question: str):
+    """Shared handler so suggested-question buttons and the chat box
+    both go through the exact same retrieval/answer logic."""
+    st.session_state.messages.append({"role": "user", "content": question})
     with st.chat_message("user"):
-        st.markdown(prompt)
+        st.markdown(question)
 
     with st.chat_message("assistant"):
         with st.spinner("Searching documents and generating answer..."):
             try:
-                answer, sources = prompting_module.answer_question(prompt)
+                answer, sources = prompting_module.answer_question(question)
                 st.markdown(answer)
                 if sources:
                     with st.expander("View Sources"):
@@ -96,6 +101,31 @@ if prompt := st.chat_input("What would you like to know?"):
                 error_msg = f"Sorry, an error occurred: {e}"
                 st.error(error_msg)
                 st.session_state.messages.append({"role": "assistant", "content": error_msg})
+
+
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+        if message.get("sources"):
+            with st.expander("View Sources"):
+                for src in message["sources"]:
+                    st.write(f"📍 {src}")
+
+# Only show suggested questions before the conversation has started
+if not st.session_state.messages:
+    st.markdown("**💡 Try asking:**")
+    cols = st.columns(2)
+    for i, question in enumerate(SUGGESTED_QUESTIONS):
+        if cols[i % 2].button(question, use_container_width=True):
+            st.session_state.pending_question = question
+
+if prompt := st.chat_input("What would you like to know?"):
+    st.session_state.pending_question = prompt
+
+if st.session_state.pending_question:
+    question = st.session_state.pending_question
+    st.session_state.pending_question = None
+    process_question(question)
 
 st.divider()
 st.caption("Built for Students | AI-Powered Document Search")
