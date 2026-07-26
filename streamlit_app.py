@@ -3,14 +3,14 @@ from pathlib import Path
 import streamlit as st
 
 # ------------------------------------------------------------------
-# First-run setup: chroma_db/ is NOT committed to the repo (it's in
-# .gitignore), so on a fresh deploy it won't exist yet. Build it once,
-# from the PDFs in data/, before importing anything that connects to it.
+# chroma_db/ is committed to the repo (prebuilt), so no rebuild is
+# needed on startup. If it's ever missing (e.g. a fresh clone before
+# running the pipeline), fall back to building it once from data/.
 # ------------------------------------------------------------------
 CHROMA_PATH = Path("chroma_db")
 
 if not CHROMA_PATH.exists():
-    with st.spinner("First-time setup: building the document index (this can take a minute or two)..."):
+    with st.spinner("Document index not found — building it now (this can take a minute or two)..."):
         store_builder = importlib.import_module("05_create_chroma_store")
         store_builder.build_vector_store()
 
